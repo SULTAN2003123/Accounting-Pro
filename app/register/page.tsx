@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function RegisterPage() {
-    const [email, setEmail] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
@@ -24,8 +23,11 @@ export default function RegisterPage() {
         try {
             if (!auth) throw new Error('Firebase not initialized');
 
-            // Create user in Firebase with actual email
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            // 1. Generate dummy email for Firebase
+            const generatedEmail = `${username.trim().toLowerCase()}@system.local`;
+
+            // 2. Create user in Firebase
+            const userCredential = await createUserWithEmailAndPassword(auth, generatedEmail, password);
             const user = userCredential.user;
 
             // 3. Update Firebase profile with Display Name
@@ -38,10 +40,10 @@ export default function RegisterPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    username,
-                    email,
+                    username: username.trim(),
+                    email: generatedEmail,
                     firebaseUid: user.uid,
-                    name
+                    name: name.trim()
                 }),
             });
 
@@ -110,23 +112,6 @@ export default function RegisterPage() {
                                         onChange={(e) => setName(e.target.value)}
                                         className="w-full bg-slate-800/40 border border-slate-700/50 rounded-2xl pl-12 pr-4 py-3.5 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-slate-600"
                                         placeholder="e.g. Alexander Reed"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-wider text-slate-400 ml-1">Email Address</label>
-                                <div className="relative group">
-                                    <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500 group-focus-within:text-primary transition-colors">
-                                        <span className="material-symbols-outlined">mail</span>
-                                    </span>
-                                    <input
-                                        type="email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full bg-slate-800/40 border border-slate-700/50 rounded-2xl pl-12 pr-4 py-3.5 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-slate-600"
-                                        placeholder="you@company.com"
                                         required
                                     />
                                 </div>
