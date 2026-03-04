@@ -1,10 +1,40 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const readline = require('readline');
-const { initializeApp } = require('firebase/app');
-const { getAuth, signInWithEmailAndPassword } = require('firebase/auth');
 
-// We need to use firebase-admin to bypass the create user password requirements,
-// or simply use the client SDK if creating users via API. Let's do it directly in DB.
-// Actually, for an admin setup, we should probably just set a user in the database to ADMIN and APPROVED if they already registered.
-// Or we can create them from scratch. Since we have a register API, let's just ask the admin script to register or update an existing user.
+async function main() {
+    const username = 'admin';
+    const email = 'admin@system.local';
+
+    console.log(`Setting up admin user: ${username}...`);
+
+    try {
+        const user = await prisma.user.upsert({
+            where: { username },
+            update: {
+                role: 'ADMIN',
+                status: 'APPROVED',
+                email: email,
+            },
+            create: {
+                username,
+                email,
+                name: 'System Admin',
+                role: 'ADMIN',
+                status: 'APPROVED',
+            },
+        });
+
+        console.log('Admin user created/updated successfully in database:');
+        console.log(user);
+        console.log('\nIMPORTANT: Now you must register this user in the app UI with:');
+        console.log(`Username: ${username}`);
+        console.log('Password: (your choice)');
+        console.log('Even if it says it already exists, the database record is now ready.');
+    } catch (error) {
+        console.error('Error setting up admin:', error);
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+
+main();

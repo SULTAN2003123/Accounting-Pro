@@ -14,9 +14,10 @@ export interface CreateUserParams {
 export async function isUsernameAvailable(username: string): Promise<boolean> {
     const user = await prisma.user.findUnique({
         where: { username },
-        select: { id: true }
+        select: { firebaseUid: true }
     });
-    return !user;
+    // If user exists but has no Firebase UID, they are likely pre-initialized (like the Admin)
+    return !user || !user.firebaseUid;
 }
 
 /**
