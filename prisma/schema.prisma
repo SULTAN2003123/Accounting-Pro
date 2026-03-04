@@ -1,0 +1,160 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  username    String   @unique
+  email       String   @unique
+  firebaseUid String?  // Firebase UID for authentication
+  name        String?
+  role        String   @default("USER") // ADMIN, USER
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Account {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g. "1000"
+  name        String   // e.g. "Cash"
+  type        String   // ASSET, LIABILITY, EQUITY, INCOME, EXPENSE
+  description String?
+  journalLines JournalLine[]
+  // These relations help with AR/AP defaults but might not be strictly necessary if we use IDs
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model JournalEntry {
+  id          String        @id @default(uuid())
+  date        DateTime
+  description String
+  reference   String?
+  status      String        @default("DRAFT") // DRAFT, POSTED
+  lines       JournalLine[]
+  invoice     Invoice?
+  bill        Bill?
+  payment     Payment?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model JournalLine {
+  id            String       @id @default(uuid())
+  journalEntryId String
+  journalEntry  JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  accountId     String
+  account       Account      @relation(fields: [accountId], references: [id])
+  debit         Decimal      @default(0)
+  credit        Decimal      @default(0)
+  description   String?
+  
+  @@index([accountId])
+  @@index([journalEntryId])
+}
+
+model Customer {
+  id        String    @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  invoices  Invoice[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  customerId     String
+  customer       Customer      @relation(fields: [customerId], references: [id])
+  date           DateTime
+  dueDate        DateTime
+  status         String        @default("DRAFT") // DRAFT, SENT, PARTIALLY_PAID, PAID, VOID
+  totalAmount    Decimal       @default(0)
+  invoiceNumber  String        @unique
+  journalEntryId String?       @unique
+  journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  lines          InvoiceLine[]
+  payments       Payment[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model InvoiceLine {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int
+  unitPrice   Decimal
+  amount      Decimal
+  accountId   String  // Income account
+}
+
+model Vendor {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  bills     Bill[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Bill {
+  id             String        @id @default(uuid())
+  vendorId       String
+  vendor         Vendor        @relation(fields: [vendorId], references: [id])
+  date           DateTime
+  dueDate        DateTime
+  status         String        @default("OPEN") // OPEN, PAID, PARTIALLY_PAID
+  totalAmount    Decimal       @default(0)
+  billNumber     String?
+  journalEntryId String?       @unique
+  journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  lines          BillLine[]
+  payments       Payment[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model BillLine {
+  id          String  @id @default(uuid())
+  billId      String
+  bill        Bill    @relation(fields: [billId], references: [id], onDelete: Cascade)
+  description String
+  amount      Decimal
+  accountId   String  // Expense account
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  date           DateTime
+  amount         Decimal
+  method         String        // CASH, BANK, CHECK
+  reference      String?
+  type           String        // RECEIVE, SPEND
+  
+  invoiceId      String?
+  invoice        Invoice?      @relation(fields: [invoiceId], references: [id])
+  
+  billId         String?
+  bill           Bill?         @relation(fields: [billId], references: [id])
+  
+  journalEntryId String?       @unique
+  journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
