@@ -25,16 +25,25 @@ export default function LoginPage() {
 
             // Resolve email and check approval status from username
             const response = await fetch(`/api/auth/login-lookup?username=${encodeURIComponent(identifier)}`);
-            const data = await response.json();
 
             if (!response.ok) {
-                if (response.status === 403) {
-                    throw new Error(data.error === 'PENDING_APPROVAL'
-                        ? 'Your account is pending administrator approval.'
-                        : 'Your account access has been revoked.');
+                let errorMessage = 'Invalid admin credentials';
+                try {
+                    const errorData = await response.json();
+                    if (response.status === 403) {
+                        errorMessage = errorData.error === 'PENDING_APPROVAL'
+                            ? 'Account pending approval.'
+                            : 'Account access revoked.';
+                    } else if (errorData.error) {
+                        errorMessage = errorData.error;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse error response:', e);
                 }
-                throw new Error('Invalid username or password');
+                throw new Error(errorMessage);
             }
+
+            const data = await response.json();
 
             email = data.email;
 

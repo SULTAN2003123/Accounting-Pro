@@ -24,16 +24,25 @@ export default function AdminLoginPage() {
             let email = '';
 
             const response = await fetch(`/api/auth/login-lookup?username=${encodeURIComponent(identifier)}`);
-            const data = await response.json();
 
             if (!response.ok) {
-                if (response.status === 403) {
-                    throw new Error(data.error === 'PENDING_APPROVAL'
-                        ? 'Account pending approval.'
-                        : 'Account access revoked.');
+                let errorMessage = 'Invalid admin credentials';
+                try {
+                    const data = await response.json();
+                    if (response.status === 403) {
+                        errorMessage = data.error === 'PENDING_APPROVAL'
+                            ? 'Account pending approval.'
+                            : 'Account access revoked.';
+                    } else if (data.error) {
+                        errorMessage = data.error;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse error response:', e);
                 }
-                throw new Error('Invalid admin credentials');
+                throw new Error(errorMessage);
             }
+
+            const data = await response.json();
 
             if (data.role !== 'ADMIN') {
                 throw new Error('Unauthorized Access: Administrator privileges required.');
